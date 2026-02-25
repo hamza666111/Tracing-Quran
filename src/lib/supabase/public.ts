@@ -11,6 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // in another tab does not interfere with landing page traffic.
 export const supabasePublicClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storageKey: 'sb-public-auth-token',
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false,
