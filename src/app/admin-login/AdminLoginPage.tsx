@@ -75,9 +75,6 @@ export function AdminLoginPage() {
           <p className="text-sm text-[#0F3D3E]/60">
             Restricted access. Please sign in with your admin credentials.
           </p>
-          <p className="text-xs text-[#0F3D3E]/50">
-            Default admin: {DEFAULT_ADMIN_EMAIL} / {DEFAULT_ADMIN_PASSWORD} (update in Supabase after first login)
-          </p>
         </div>
 
         {error && (
@@ -127,13 +124,6 @@ export function AdminLoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => setForm({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })}
-            className="w-full py-3 bg-white border border-[#C6A75E]/30 text-[#0F3D3E] rounded-xl hover:border-[#C6A75E] transition-all duration-300"
-          >
-            Autofill default admin
-          </button>
         </form>
 
         <button

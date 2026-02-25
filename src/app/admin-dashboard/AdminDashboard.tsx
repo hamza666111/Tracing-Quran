@@ -7,6 +7,9 @@ import {
   LogOut,
   Package,
   PlusCircle,
+  Send,
+  Truck,
+  CheckCheck,
   RefreshCw,
   Search,
   Trash2,
@@ -402,7 +405,43 @@ export function AdminDashboard() {
           <h2 className="text-xl text-[#0F3D3E] flex items-center gap-2">
             <Package className="w-4 h-4" /> Product Management
           </h2>
-          <button
+                  <td className="py-3 text-right space-x-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleStatusChange(order.id, "confirmed")}
+                        disabled={orderActionId === order.id || order.status === "confirmed"}
+                        className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1"
+                        title="Mark as confirmed"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(order.id, "shipped")}
+                        disabled={orderActionId === order.id || order.status === "shipped"}
+                        className="px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50 flex items-center gap-1"
+                        title="Mark as shipped"
+                      >
+                        <Truck className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(order.id, "delivered")}
+                        disabled={orderActionId === order.id || order.status === "delivered"}
+                        className="px-3 py-2 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 disabled:opacity-50 flex items-center gap-1"
+                        title="Mark as delivered"
+                      >
+                        <CheckCheck className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(order.id, "cancelled")}
+                        disabled={orderActionId === order.id || order.status === "cancelled"}
+                        className="px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-50 flex items-center gap-1"
+                        title="Cancel order"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="py-3 text-right space-x-2">
             onClick={() => {
               setProductForm({ ...emptyProductForm });
               setFormMode("create");
