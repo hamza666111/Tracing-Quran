@@ -125,3 +125,14 @@ create trigger trg_orders_before_insert
   before insert on orders
   for each row
   execute function orders_before_insert();
+
+-- Sample seed data (optional). Run once; uses on conflict to avoid duplicates.
+insert into products (name, type, price, image_url, is_active, stock_quantity)
+values
+  ('Complete Quran Set (30 Paras)', 'full', 4999, 'https://images.unsplash.com/photo-1596522681657-8e9057309a7e?auto=format&fit=crop&w=1200&q=80', true, 50),
+  ('Juz 1 - Alif Laam Meem', 'para', 199, 'https://images.unsplash.com/photo-1720701574998-d68020bce2bd?auto=format&fit=crop&w=1200&q=80', true, 100),
+  ('Juz 29 - Tabarak', 'para', 199, 'https://images.unsplash.com/photo-1720701574998-d68020bce2bd?auto=format&fit=crop&w=1200&q=80', true, 100),
+  ('Juz 30 - Amma Para', 'para', 199, 'https://images.unsplash.com/photo-1720701574998-d68020bce2bd?auto=format&fit=crop&w=1200&q=80', true, 120),
+  ('Surah Yaseen (Tracing)', 'surah', 149, 'https://images.unsplash.com/photo-1720701574998-d68020bce2bd?auto=format&fit=crop&w=1200&q=80', true, 80),
+  ('Surah Ar-Rahman (Tracing)', 'surah', 149, 'https://images.unsplash.com/photo-1720701574998-d68020bce2bd?auto=format&fit=crop&w=1200&q=80', true, 80)
+on conflict (name) do nothing;
