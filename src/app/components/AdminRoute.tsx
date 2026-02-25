@@ -10,51 +10,63 @@ export function AdminRoute({ children }: { children: ReactNode }) {
     let active = true;
 
     const load = async () => {
-      const { data } = await supabaseClient.auth.getSession();
-      const session = data.session;
-      const userId = session?.user?.id;
+      try {
+        const { data } = await supabaseClient.auth.getSession();
+        const session = data.session;
+        const userId = session?.user?.id;
 
-      if (!userId) {
+        if (!userId) {
+          if (active) {
+            setAuthorized(false);
+            setChecking(false);
+          }
+          return;
+        }
+
+        const { data: profile } = await supabaseClient
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+        const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
+
+        if (active) {
+          setAuthorized(Boolean(isAdmin));
+          setChecking(false);
+        }
+      } catch (_err) {
         if (active) {
           setAuthorized(false);
           setChecking(false);
         }
-        return;
-      }
-
-      const { data: profile } = await supabaseClient
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
-
-      if (active) {
-        setAuthorized(Boolean(isAdmin));
-        setChecking(false);
       }
     };
 
     load();
 
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      const userId = session?.user?.id;
-      if (!userId) {
+      try {
+        const userId = session?.user?.id;
+        if (!userId) {
+          setAuthorized(false);
+          setChecking(false);
+          return;
+        }
+
+        const { data: profile } = await supabaseClient
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+        const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
+        setAuthorized(Boolean(isAdmin));
+        setChecking(false);
+      } catch (_err) {
         setAuthorized(false);
         setChecking(false);
-        return;
       }
-
-      const { data: profile } = await supabaseClient
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
-      setAuthorized(Boolean(isAdmin));
-      setChecking(false);
     });
 
     return () => {
