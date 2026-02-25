@@ -13,12 +13,14 @@ export type OrderStatus = 'new' | 'confirmed' | 'shipped' | 'delivered' | 'cance
 
 export type OrderType = {
   id: string;
+  user_id?: string | null;
   customer_name: string;
   phone: string;
   city: string;
   address: string;
   product_id: string;
   quantity: number;
+  unit_price: number;
   total_price: number;
   status: OrderStatus;
   created_at: string;
