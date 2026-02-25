@@ -91,8 +91,7 @@ alter table orders enable row level security;
 
 -- Users policies: users can see/update themselves; admins can see all ------
 create policy "Users self-manage" on users
-  for select using (auth.uid() = id)
-  with check (auth.uid() = id);
+  for select using (auth.uid() = id);
 
 create policy "Admins manage users" on users
   for all to authenticated
