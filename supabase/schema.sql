@@ -2,10 +2,13 @@
 -- Run this in the Supabase SQL editor using the service role (it DROPS and recreates tables)
 
 -- Danger: drop and recreate ------------------------------------------------
+drop table if exists order_items cascade;
+drop table if exists order_groups cascade;
 drop table if exists orders cascade;
 drop table if exists products cascade;
 drop table if exists users cascade;
 drop table if exists user_profiles cascade;
+drop function if exists order_items_before_insert cascade;
 drop function if exists orders_before_insert cascade;
 drop function if exists is_admin cascade;
 drop function if exists app_is_admin cascade;
@@ -86,7 +89,37 @@ create index if not exists idx_products_type on products(type);
 create index if not exists idx_products_is_active on products(is_active);
 create index if not exists idx_products_created_at on products(created_at);
 
--- Orders ------------------------------------------------------------------
+-- Order headers ------------------------------------------------------------
+create table if not exists order_groups (
+  id uuid primary key default gen_random_uuid(),
+  customer_name text not null,
+  phone text not null,
+  city text not null,
+  address text not null,
+  status text not null default 'new' check (status in ('new','confirmed','shipped','delivered','cancelled')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_order_groups_status on order_groups(status);
+create index if not exists idx_order_groups_created_at on order_groups(created_at);
+create index if not exists idx_order_groups_phone on order_groups(phone);
+
+-- Order line items ---------------------------------------------------------
+create table if not exists order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references order_groups(id) on delete cascade,
+  product_id uuid not null references products(id) on delete restrict,
+  quantity integer not null check (quantity > 0),
+  unit_price integer not null check (unit_price >= 0),
+  total_price integer not null check (total_price >= 0),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_order_items_order_id on order_items(order_id);
+create index if not exists idx_order_items_product_id on order_items(product_id);
+create index if not exists idx_order_items_created_at on order_items(created_at);
+
+-- Legacy single-line orders table (kept for backward compatibility) -------
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete set null,
@@ -110,6 +143,8 @@ create index if not exists idx_orders_user_id on orders(user_id);
 -- Row Level Security ------------------------------------------------------
 alter table users enable row level security;
 alter table products enable row level security;
+alter table order_groups enable row level security;
+alter table order_items enable row level security;
 alter table orders enable row level security;
 
 -- Users policies: users can see/update themselves; admins can see all ------
@@ -133,7 +168,51 @@ create policy "Admin manage products"
   using (app_is_admin())
   with check (app_is_admin());
 
--- Orders policies ---------------------------------------------------------
+-- Order group policies ----------------------------------------------------
+create policy "Public insert order_groups"
+  on order_groups for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Admin select order_groups"
+  on order_groups for select
+  to authenticated
+  using (app_is_admin());
+
+create policy "Admin update order_groups"
+  on order_groups for update
+  to authenticated
+  using (app_is_admin())
+  with check (app_is_admin());
+
+create policy "Admin delete order_groups"
+  on order_groups for delete
+  to authenticated
+  using (app_is_admin());
+
+-- Order item policies -----------------------------------------------------
+create policy "Public insert order_items"
+  on order_items for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Admin select order_items"
+  on order_items for select
+  to authenticated
+  using (app_is_admin());
+
+create policy "Admin update order_items"
+  on order_items for update
+  to authenticated
+  using (app_is_admin())
+  with check (app_is_admin());
+
+create policy "Admin delete order_items"
+  on order_items for delete
+  to authenticated
+  using (app_is_admin());
+
+-- Legacy orders policies (kept) ------------------------------------------
 create policy "Public insert orders"
   on orders for insert
   to anon, authenticated
@@ -156,6 +235,55 @@ create policy "Admin delete orders"
   using (app_is_admin());
 
 -- Order safeguards: price + stock are server-calculated -------------------
+create or replace function order_items_before_insert()
+returns trigger as $$
+declare
+  v_price integer;
+  v_stock integer;
+  v_is_active boolean;
+begin
+  set local search_path = public;
+
+  if new.quantity <= 0 then
+    raise exception 'Quantity must be greater than 0';
+  end if;
+
+  select price, stock_quantity, is_active
+    into v_price, v_stock, v_is_active
+  from products
+  where id = new.product_id
+  for update;
+
+  if not found then
+    raise exception 'Product not found';
+  end if;
+
+  if not v_is_active then
+    raise exception 'Product is not active';
+  end if;
+
+  if v_stock < new.quantity then
+    raise exception 'Insufficient stock';
+  end if;
+
+  new.unit_price := v_price;
+  new.total_price := v_price * new.quantity;
+
+  update products
+    set stock_quantity = stock_quantity - new.quantity
+  where id = new.product_id;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists trg_order_items_before_insert on order_items;
+create trigger trg_order_items_before_insert
+  before insert on order_items
+  for each row
+  execute function order_items_before_insert();
+
+-- Legacy trigger for single-line orders (kept) ----------------------------
 create or replace function orders_before_insert()
 returns trigger as $$
 declare
