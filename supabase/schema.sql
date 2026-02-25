@@ -5,9 +5,12 @@
 drop table if exists orders cascade;
 drop table if exists products cascade;
 drop table if exists users cascade;
+drop table if exists user_profiles cascade;
 drop function if exists orders_before_insert cascade;
 drop function if exists is_admin cascade;
 drop function if exists app_is_admin cascade;
+drop function if exists handle_new_user cascade;
+drop trigger if exists on_auth_user_created on auth.users;
 
 -- Extensions --------------------------------------------------------------
 create extension if not exists "pgcrypto";
@@ -34,6 +37,26 @@ create trigger set_users_updated_at
   before update on users
   for each row
   execute function trg_users_set_updated_at();
+
+-- Auto-provision user profile rows from auth.users -----------------------
+create or replace function handle_new_user()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  insert into users (id, email, role)
+  values (new.id, new.email, 'customer')
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row
+  execute function handle_new_user();
 
 -- Helpers -----------------------------------------------------------------
 create or replace function app_is_admin() returns boolean
