@@ -139,15 +139,15 @@ begin
   select exists(select 1 from auth.users where email = v_email) into v_exists;
 
   if not v_exists then
-    -- supabase auth v2 signature: auth.create_user(settings jsonb)
-    perform auth.create_user(
+    -- Supabase Auth v2 admin API signature: auth.admin.create_user(settings jsonb)
+    perform auth.admin.create_user(
       jsonb_build_object(
         'email', v_email,
         'password', v_password,
         'email_confirm', true,
         'app_metadata', jsonb_build_object('role', 'admin', 'provider', 'email', 'providers', array['email']),
         'user_metadata', jsonb_build_object('role', 'admin')
-      )
+      )::jsonb
     );
   end if;
 end $$;
