@@ -1,8 +1,10 @@
--- Supabase schema for Tracing Quran store
--- Run in the Supabase SQL editor
+-- Supabase schema for the Islamic E-commerce landing page
+-- Run this in the Supabase SQL editor (service role) after provisioning the project
 
+-- Extensions --------------------------------------------------------------
 create extension if not exists "pgcrypto";
 
+-- Core tables -------------------------------------------------------------
 create table if not exists products (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -26,7 +28,7 @@ create table if not exists orders (
   address text not null,
   product_id uuid not null references products(id) on delete cascade,
   quantity integer not null check (quantity > 0),
-  total_price integer not null,
+  total_price integer not null default 0 check (total_price >= 0),
   status text not null default 'new' check (status in ('new','confirmed','shipped','delivered','cancelled')),
   created_at timestamptz not null default now()
 );
@@ -35,7 +37,7 @@ create index if not exists idx_orders_status on orders(status);
 create index if not exists idx_orders_created_at on orders(created_at);
 create index if not exists idx_orders_phone on orders(phone);
 
--- helper to gate admin-only actions
+-- Auth helpers ------------------------------------------------------------
 create or replace function is_admin() returns boolean
 language sql
 stable
@@ -43,6 +45,7 @@ as $$
   select coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin';
 $$;
 
+-- Row Level Security ------------------------------------------------------
 alter table products enable row level security;
 alter table orders enable row level security;
 
@@ -78,7 +81,7 @@ create policy "Admin delete orders"
   to authenticated
   using (is_admin());
 
--- keep pricing + stock authoritative on the server
+-- Order safeguards: price + stock are server-calculated ------------------
 create or replace function orders_before_insert()
 returns trigger as $$
 declare
@@ -125,6 +128,26 @@ create trigger trg_orders_before_insert
   before insert on orders
   for each row
   execute function orders_before_insert();
+
+-- Seed a default admin user for first login (change the credentials after signing in)
+do $$
+declare
+  v_email text := 'admin@islamicbooks.pk';
+  v_password text := 'Admin!123';
+  v_exists boolean;
+begin
+  select exists(select 1 from auth.users where email = v_email) into v_exists;
+
+  if not v_exists then
+    perform auth.create_user(
+      email := v_email,
+      password := v_password,
+      email_confirm := true,
+      raw_app_meta_data := jsonb_build_object('role', 'admin', 'provider', 'email', 'providers', array['email']),
+      raw_user_meta_data := jsonb_build_object('role', 'admin')
+    );
+  end if;
+end $$;
 
 -- Sample seed data (optional). Run once; uses on conflict to avoid duplicates.
 insert into products (name, type, price, image_url, is_active, stock_quantity)

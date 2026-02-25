@@ -58,7 +58,8 @@ export function CheckoutSection({
   };
 
   const handleQuantityChange = (value: number) => {
-    const safeValue = Math.max(1, value);
+    const upperLimit = selectedProduct ? Math.max(1, selectedProduct.stock_quantity) : Infinity;
+    const safeValue = Math.min(Math.max(1, value), upperLimit);
     setQuantity(safeValue);
     onQuantityChange(safeValue);
   };
@@ -75,8 +76,20 @@ export function CheckoutSection({
       return;
     }
 
+    if (!selectedProduct.stock_quantity || selectedProduct.stock_quantity < 1) {
+      setError("Selected product is out of stock. Please choose another item.");
+      return;
+    }
+
     if (quantity < 1) {
       setError("Quantity must be at least 1.");
+      return;
+    }
+
+    if (quantity > selectedProduct.stock_quantity) {
+      setError(`Only ${selectedProduct.stock_quantity} unit(s) available for this product.`);
+      setQuantity(selectedProduct.stock_quantity);
+      onQuantityChange(selectedProduct.stock_quantity);
       return;
     }
 
@@ -87,22 +100,26 @@ export function CheckoutSection({
 
     setSubmitting(true);
 
-    const { error: insertError } = await placeOrder({
-      customer_name: formData.name.trim(),
-      phone: formData.phone.trim(),
-      city: formData.city.trim(),
-      address: formData.address.trim(),
-      product_id: selectedProduct.id,
-      quantity,
-    });
+    try {
+      const { error: insertError } = await placeOrder({
+        customer_name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        city: formData.city.trim(),
+        address: formData.address.trim(),
+        product_id: selectedProduct.id,
+        quantity,
+      });
 
-    if (insertError) {
-      setError(insertError.message || "Unable to place order. Please try again.");
-    } else {
-      setSuccess("Order placed! You will receive a confirmation call soon.");
-      setFormData({ name: "", phone: "", city: "", address: "" });
-      handleQuantityChange(1);
-      onOrderPlaced?.();
+      if (insertError) {
+        setError(insertError.message || "Unable to place order. Please try again.");
+      } else {
+        setSuccess("Order placed! You will receive a confirmation call soon.");
+        setFormData({ name: "", phone: "", city: "", address: "" });
+        handleQuantityChange(1);
+        onOrderPlaced?.();
+      }
+    } catch (err) {
+      setError("Unexpected error while placing the order. Please try again.");
     }
 
     setSubmitting(false);
@@ -212,6 +229,7 @@ export function CheckoutSection({
                     value={quantity}
                     onChange={(e) => handleQuantityChange(Number(e.target.value))}
                     min="1"
+                    max={selectedProduct ? selectedProduct.stock_quantity : undefined}
                     required
                     className="w-full px-6 py-4 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] outline-none transition-colors bg-white text-[#0F3D3E]"
                   />

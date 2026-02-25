@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Lock, Mail, Shield } from "lucide-react";
 import { supabaseClient } from "@/lib/supabase/client";
 
+const DEFAULT_ADMIN_EMAIL = import.meta.env.VITE_DEFAULT_ADMIN_EMAIL || "admin@islamicbooks.pk";
+const DEFAULT_ADMIN_PASSWORD = import.meta.env.VITE_DEFAULT_ADMIN_PASSWORD || "Admin!123";
+
 export function AdminLoginPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +67,9 @@ export function AdminLoginPage() {
           <p className="text-sm text-[#0F3D3E]/60">
             Restricted access. Please sign in with your admin credentials.
           </p>
+          <p className="text-xs text-[#0F3D3E]/50">
+            Default admin: {DEFAULT_ADMIN_EMAIL} / {DEFAULT_ADMIN_PASSWORD} (update in Supabase after first login)
+          </p>
         </div>
 
         {error && (
@@ -111,6 +117,14 @@ export function AdminLoginPage() {
             className="w-full py-3 bg-[#C6A75E] text-white rounded-xl hover:bg-[#B89650] transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-60"
           >
             {loading ? "Signing in..." : "Sign in"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setForm({ email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD })}
+            className="w-full py-3 bg-white border border-[#C6A75E]/30 text-[#0F3D3E] rounded-xl hover:border-[#C6A75E] transition-all duration-300"
+          >
+            Autofill default admin
           </button>
         </form>
 
