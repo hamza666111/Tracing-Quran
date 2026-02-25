@@ -10,6 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storageKey: 'sb-admin-auth-token',
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,

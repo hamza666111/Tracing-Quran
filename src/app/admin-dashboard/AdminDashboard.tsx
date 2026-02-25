@@ -73,14 +73,20 @@ export function AdminDashboard() {
 
   const loadOrders = async (appliedFilters = filters) => {
     setOrdersLoading(true);
-    const { data, error: queryError } = await fetchOrders(appliedFilters);
-    if (queryError) {
-      setError(queryError.message);
-    } else {
-      setError(null);
-      setOrders(data);
+    try {
+      const { data, error: queryError } = await fetchOrders(appliedFilters);
+      if (queryError) {
+        setError(queryError.message);
+      } else {
+        setError(null);
+        setOrders(data);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load orders';
+      setError(message);
+    } finally {
+      setOrdersLoading(false);
     }
-    setOrdersLoading(false);
   };
 
   const loadProducts = async () => {
