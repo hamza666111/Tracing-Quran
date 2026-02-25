@@ -48,21 +48,8 @@ export function AdminDashboard() {
   useEffect(() => {
     const ensureAdmin = async () => {
       const { data } = await supabaseClient.auth.getSession();
-      const session = data.session;
-      const userId = session?.user?.id;
-
-      if (!userId) {
-        navigate("/admin-login", { replace: true });
-        return;
-      }
-
-      const { data: profile } = await supabaseClient
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
+      const role = data.session?.user?.app_metadata?.role;
+      const isAdmin = role === 'admin';
       if (!isAdmin) {
         navigate("/admin-login", { replace: true });
       }
