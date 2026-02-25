@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabaseClient } from "@/lib/supabase/client";
+import { isAdminSession } from "@/lib/supabase/roles";
 
 export function AdminRoute({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -12,8 +13,7 @@ export function AdminRoute({ children }: { children: ReactNode }) {
     const load = async () => {
       try {
         const { data } = await supabaseClient.auth.getSession();
-        const role = data.session?.user?.app_metadata?.role;
-        const isAdmin = role === 'admin';
+        const isAdmin = await isAdminSession(data.session);
 
         if (active) {
           setAuthorized(isAdmin);
@@ -31,8 +31,7 @@ export function AdminRoute({ children }: { children: ReactNode }) {
 
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       try {
-        const role = session?.user?.app_metadata?.role;
-        const isAdmin = role === 'admin';
+        const isAdmin = await isAdminSession(session);
         setAuthorized(isAdmin);
         setChecking(false);
       } catch (_err) {

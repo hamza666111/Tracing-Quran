@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, Mail, Shield } from "lucide-react";
 import { supabaseClient } from "@/lib/supabase/client";
+import { isAdminSession } from "@/lib/supabase/roles";
 
 const DEFAULT_ADMIN_EMAIL = import.meta.env.VITE_DEFAULT_ADMIN_EMAIL || "admin@islamicbooks.pk";
 const DEFAULT_ADMIN_PASSWORD = import.meta.env.VITE_DEFAULT_ADMIN_PASSWORD || "Admin!123";
@@ -16,7 +17,7 @@ export function AdminLoginPage() {
     const checkSession = async () => {
       const { data } = await supabaseClient.auth.getSession();
       const session = data.session;
-      const isAdmin = session?.user?.app_metadata?.role === "admin";
+      const isAdmin = await isAdminSession(session);
       if (isAdmin) {
         navigate("/admin-dashboard", { replace: true });
       }
@@ -48,8 +49,7 @@ export function AdminLoginPage() {
     // Ensure fresh JWT with latest app_metadata/user role
     await supabaseClient.auth.refreshSession();
 
-    const role = data.session?.user?.app_metadata?.role;
-    const isAdmin = role === "admin";
+    const isAdmin = await isAdminSession(data.session);
     if (!isAdmin) {
       setError("This account is not authorized for admin access.");
       await supabaseClient.auth.signOut();

@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { supabaseClient } from "@/lib/supabase/client";
+import { isAdminSession } from "@/lib/supabase/roles";
 import { fetchOrders, updateOrderStatus, deleteOrder } from "@/lib/api/orders";
 import { fetchAllProducts, upsertProduct, deleteProduct, toggleProductActive } from "@/lib/api/products";
 import { OrderFilters, OrderStatus, OrderType, ProductType } from "@/lib/types";
@@ -48,8 +49,7 @@ export function AdminDashboard() {
   useEffect(() => {
     const ensureAdmin = async () => {
       const { data } = await supabaseClient.auth.getSession();
-      const role = data.session?.user?.app_metadata?.role;
-      const isAdmin = role === 'admin';
+      const isAdmin = await isAdminSession(data.session);
       if (!isAdmin) {
         navigate("/admin-login", { replace: true });
       }
