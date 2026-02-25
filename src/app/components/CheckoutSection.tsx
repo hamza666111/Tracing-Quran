@@ -227,6 +227,15 @@ export function CheckoutSection({
                         </div>
                       </div>
                     ))}
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}
+                        className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[#C6A75E] text-[#C6A75E] hover:bg-[#F5E6C8] transition-colors"
+                      >
+                        Add more products
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
