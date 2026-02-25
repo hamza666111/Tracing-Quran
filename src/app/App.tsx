@@ -81,6 +81,17 @@ export default function App() {
     document.getElementById("checkout")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleBuyNow = (productId: string, quantity: number) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product || !product.is_active || product.stock_quantity < 1) {
+      return;
+    }
+
+    const safeQuantity = Math.min(Math.max(1, quantity), product.stock_quantity);
+    setCartItems([{ product, quantity: safeQuantity }]);
+    document.getElementById("checkout")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handleUpdateCartQuantity = (productId: string, quantity: number) => {
     const product = products.find((item) => item.id === productId);
     if (!product) return;
@@ -110,6 +121,7 @@ export default function App() {
           loading={productsLoading}
           error={productsError}
           onAddToCart={handleAddToCart}
+          onBuyNow={handleBuyNow}
         />
         <TestimonialsSection />
         <OfferSection />

@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { isAdminSession } from "@/lib/supabase/roles";
@@ -45,6 +47,7 @@ export function AdminDashboard() {
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const ensureAdmin = async () => {
@@ -95,6 +98,18 @@ export function AdminDashboard() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  const toggleOrderExpanded = (orderId: string) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
 
   const stats = useMemo(() => {
     const totalRevenue = orders.reduce((sum, order) => {
@@ -363,18 +378,42 @@ export function AdminDashboard() {
                   (sum, item) => sum + (item.total_price ?? (item.quantity || 0) * (item.product?.price || 0)),
                   0
                 );
-                const firstItem = order.items[0];
-                const remaining = Math.max(0, order.items.length - 1);
-                const productLabel = firstItem
-                  ? `${firstItem.product?.name || "Product"}${remaining ? ` +${remaining} more` : ""}`
-                  : "-";
+                const showAll = expandedOrders.has(order.id);
+                const itemsToShow = showAll ? order.items : order.items.slice(0, 2);
+                const hasMore = order.items.length > itemsToShow.length;
 
                 return (
                   <tr key={order.id} className="border-t border-[#C6A75E]/10">
                     <td className="py-3 text-[#0F3D3E]">{order.customer_name}</td>
                     <td className="py-3 text-[#0F3D3E]">{order.phone}</td>
                     <td className="py-3 text-[#0F3D3E]">{order.city}</td>
-                    <td className="py-3 text-[#0F3D3E]">{productLabel}</td>
+                    <td className="py-3 text-[#0F3D3E] align-top">
+                      <div className="space-y-1">
+                        {itemsToShow.map((item) => (
+                          <div key={item.id} className="text-sm text-[#0F3D3E]">
+                            {item.product?.name || "Product"} — {item.quantity} x PKR {(item.product?.price || 0).toLocaleString()}
+                          </div>
+                        ))}
+                        {hasMore && !showAll && (
+                          <button
+                            type="button"
+                            onClick={() => toggleOrderExpanded(order.id)}
+                            className="flex items-center gap-1 text-xs text-[#C6A75E] hover:text-[#B89650]"
+                          >
+                            <ChevronRight className="w-4 h-4" /> Show all {order.items.length} items
+                          </button>
+                        )}
+                        {showAll && order.items.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleOrderExpanded(order.id)}
+                            className="flex items-center gap-1 text-xs text-[#C6A75E] hover:text-[#B89650]"
+                          >
+                            <ChevronDown className="w-4 h-4" /> Collapse
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 text-[#0F3D3E]">{totalQuantity}</td>
                     <td className="py-3 text-[#0F3D3E]">PKR {totalPrice.toLocaleString()}</td>
                   <td className="py-3">
