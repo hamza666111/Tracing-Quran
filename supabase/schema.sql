@@ -12,18 +12,6 @@ drop function if exists app_is_admin cascade;
 -- Extensions --------------------------------------------------------------
 create extension if not exists "pgcrypto";
 
--- Helpers -----------------------------------------------------------------
-create or replace function app_is_admin() returns boolean
-language sql
-stable
-as $$
-  select
-    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
-    or exists (
-      select 1 from users u where u.id = auth.uid() and u.role = 'admin'
-    );
-$$;
-
 -- Users -------------------------------------------------------------------
 create table if not exists users (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -46,6 +34,18 @@ create trigger set_users_updated_at
   before update on users
   for each row
   execute function trg_users_set_updated_at();
+
+-- Helpers -----------------------------------------------------------------
+create or replace function app_is_admin() returns boolean
+language sql
+stable
+as $$
+  select
+    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+    or exists (
+      select 1 from users u where u.id = auth.uid() and u.role = 'admin'
+    );
+$$;
 
 -- Products ----------------------------------------------------------------
 create table if not exists products (
