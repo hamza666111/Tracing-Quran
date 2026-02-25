@@ -384,28 +384,7 @@ export function AdminDashboard() {
                     </select>
                   </td>
                   <td className="py-3 text-[#0F3D3E]">{new Date(order.created_at).toLocaleString()}</td>
-                  <td className="py-3 text-right space-x-2">
-                    <button
-                      onClick={() => handleDeleteOrder(order.id)}
-                      disabled={orderActionId === order.id}
-                      className="px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="bg-white rounded-3xl border border-[#C6A75E]/10 shadow-sm p-6 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-xl text-[#0F3D3E] flex items-center gap-2">
-            <Package className="w-4 h-4" /> Product Management
-          </h2>
-                  <td className="py-3 text-right space-x-2">
+                  <td className="py-3 text-right">
                     <div className="flex justify-end gap-2 flex-wrap">
                       <button
                         onClick={() => handleStatusChange(order.id, "confirmed")}
@@ -439,9 +418,29 @@ export function AdminDashboard() {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => handleDeleteOrder(order.id)}
+                        disabled={orderActionId === order.id}
+                        className="px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-50"
+                        title="Delete order"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
-                  <td className="py-3 text-right space-x-2">
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-3xl border border-[#C6A75E]/10 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-xl text-[#0F3D3E] flex items-center gap-2">
+            <Package className="w-4 h-4" /> Product Management
+          </h2>
+          <button
             onClick={() => {
               setProductForm({ ...emptyProductForm });
               setFormMode("create");

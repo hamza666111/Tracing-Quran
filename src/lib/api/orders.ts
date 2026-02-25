@@ -1,4 +1,5 @@
 import { supabaseClient } from '../supabase/client';
+import { supabasePublicClient } from '../supabase/public';
 import { OrderFilters, OrderStatus, OrderType } from '../types';
 
 export type CreateOrderPayload = {
@@ -11,7 +12,7 @@ export type CreateOrderPayload = {
 };
 
 export async function placeOrder(payload: CreateOrderPayload) {
-  const { error } = await supabaseClient.from('orders').insert(payload);
+  const { error } = await supabasePublicClient.from('orders').insert(payload);
   return { data: null, error };
 }
 

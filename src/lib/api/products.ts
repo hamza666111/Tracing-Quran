@@ -1,8 +1,9 @@
 import { supabaseClient } from '../supabase/client';
+import { supabasePublicClient } from '../supabase/public';
 import { ProductType } from '../types';
 
 export async function fetchActiveProducts() {
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabasePublicClient
     .from('products')
     .select('*')
     .eq('is_active', true)
