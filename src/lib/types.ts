@@ -9,6 +9,11 @@ export type ProductType = {
   created_at: string;
 };
 
+export type CartItem = {
+  product: ProductType;
+  quantity: number;
+};
+
 export type OrderStatus = 'new' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
 export type OrderType = {

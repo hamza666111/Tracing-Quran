@@ -1,4 +1,4 @@
-import { Heart, Mail, Phone, MapPin } from "lucide-react";
+import { Heart, Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 
 export function Footer() {
   return (
@@ -66,6 +66,15 @@ export function Footer() {
                 <span>Pakistan</span>
               </li>
             </ul>
+            <a
+              href="https://wa.me/923001234567?text=Assalamu%20Alaikum%21%20I%20have%20a%20question%20about%20Tracing%20Quran."
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-3 mt-4 bg-[#25D366] text-[#0F3D3E] font-semibold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Chat on WhatsApp
+            </a>
           </div>
         </div>
 

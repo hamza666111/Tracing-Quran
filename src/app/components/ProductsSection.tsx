@@ -6,17 +6,18 @@ type ProductsSectionProps = {
   products: ProductType[];
   loading: boolean;
   error?: string | null;
-  onSelectProduct: (productId: string, quantity: number) => void;
+  onAddToCart: (productId: string, quantity: number) => void;
 };
 
 type ProductCardProps = {
   product: ProductType;
-  onOrder: (quantity: number) => void;
+  onAddToCart: (quantity: number) => void;
 };
 
-function ProductCard({ product, onOrder }: ProductCardProps) {
+function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const outOfStock = product.stock_quantity <= 0;
+  const unavailable = outOfStock || !product.is_active;
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-[#C6A75E]/10">
@@ -69,22 +70,22 @@ function ProductCard({ product, onOrder }: ProductCardProps) {
 
         <button
           type="button"
-          disabled={outOfStock}
-          onClick={() => onOrder(quantity)}
+          disabled={unavailable}
+          onClick={() => onAddToCart(quantity)}
           className={`w-full py-4 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 ${
-            outOfStock
+            unavailable
               ? "bg-[#C6A75E]/60 text-white cursor-not-allowed"
               : "bg-[#C6A75E] text-white hover:bg-[#B89650]"
           }`}
         >
-          {outOfStock ? "Out of Stock" : "Order Now"}
+          {unavailable ? "Unavailable" : "Add to Cart"}
         </button>
       </div>
     </div>
   );
 }
 
-export function ProductsSection({ products, loading, error, onSelectProduct }: ProductsSectionProps) {
+export function ProductsSection({ products, loading, error, onAddToCart }: ProductsSectionProps) {
   const [activeTab, setActiveTab] = useState<'full' | 'para' | 'surah'>('full');
 
   const grouped = useMemo(
@@ -166,7 +167,7 @@ export function ProductsSection({ products, loading, error, onSelectProduct }: P
             <ProductCard
               key={product.id}
               product={product}
-              onOrder={(quantity) => onSelectProduct(product.id, quantity)}
+              onAddToCart={(quantity) => onAddToCart(product.id, quantity)}
             />
           ))}
         </div>

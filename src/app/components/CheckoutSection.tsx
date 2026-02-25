@@ -1,25 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
-import { ShoppingBag, User, Phone, MapPin, Home, Package } from "lucide-react";
+import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
+import { ShoppingBag, User, Phone, MapPin, Home, Package, Minus, Plus, Trash2 } from "lucide-react";
 import { placeOrder } from "@/lib/api/orders";
-import { ProductType } from "@/lib/types";
+import { CartItem, ProductType } from "@/lib/types";
 
 type CheckoutSectionProps = {
   products: ProductType[];
   loadingProducts: boolean;
-  selectedProductId: string | null;
-  onSelectProductId: (id: string) => void;
-  selectedQuantity: number;
-  onQuantityChange: (value: number) => void;
+  cartItems: CartItem[];
+  onUpdateQuantity: (productId: string, quantity: number) => void;
+  onRemoveItem: (productId: string) => void;
+  onClearCart: () => void;
   onOrderPlaced?: () => void;
 };
 
 export function CheckoutSection({
   products,
   loadingProducts,
-  selectedProductId,
-  onSelectProductId,
-  selectedQuantity,
-  onQuantityChange,
+  cartItems,
+  onUpdateQuantity,
+  onRemoveItem,
+  onClearCart,
   onOrderPlaced,
 }: CheckoutSectionProps) {
   const [formData, setFormData] = useState({
@@ -28,68 +28,57 @@ export function CheckoutSection({
     city: "",
     address: "",
   });
-  const [quantity, setQuantity] = useState(selectedQuantity || 1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    setQuantity(selectedQuantity || 1);
-  }, [selectedQuantity]);
-
-  useEffect(() => {
-    if (!selectedProductId && products.length) {
-      onSelectProductId(products[0].id);
-    }
-  }, [selectedProductId, products, onSelectProductId]);
-
-  const selectedProduct = useMemo(
-    () => products.find((product) => product.id === selectedProductId) || null,
-    [products, selectedProductId]
+  const cartTotal = useMemo(
+    () =>
+      cartItems.reduce((sum, item) => sum + (item.product.price || 0) * item.quantity, 0),
+    [cartItems]
   );
 
-  const totalPrice = selectedProduct ? selectedProduct.price * quantity : 0;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleQuantityChange = (value: number) => {
-    const upperLimit = selectedProduct ? Math.max(1, selectedProduct.stock_quantity) : Infinity;
-    const safeValue = Math.min(Math.max(1, value), upperLimit);
-    setQuantity(safeValue);
-    onQuantityChange(safeValue);
+  const handleQuantityChange = (productId: string, value: number) => {
+    const product = cartItems.find((item) => item.product.id === productId)?.product
+      || products.find((item) => item.id === productId);
+    if (!product) return;
+
+    const safeValue = Math.min(Math.max(1, value), product.stock_quantity || 1);
+    onUpdateQuantity(productId, safeValue);
   };
 
   const validatePhone = (phone: string) => /^03\d{2}-?\d{7}$/.test(phone);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (!selectedProduct) {
-      setError("Please select a product.");
+    if (!cartItems.length) {
+      setError("Add at least one product to your cart before checking out.");
       return;
     }
 
-    if (!selectedProduct.stock_quantity || selectedProduct.stock_quantity < 1) {
-      setError("Selected product is out of stock. Please choose another item.");
+    const unavailable = cartItems.find(
+      (item) => !item.product.is_active || !item.product.stock_quantity || item.product.stock_quantity < 1
+    );
+
+    if (unavailable) {
+      setError(`${unavailable.product.name} is unavailable. Please remove it from your cart.`);
       return;
     }
 
-    if (quantity < 1) {
-      setError("Quantity must be at least 1.");
-      return;
-    }
-
-    if (quantity > selectedProduct.stock_quantity) {
-      setError(`Only ${selectedProduct.stock_quantity} unit(s) available for this product.`);
-      setQuantity(selectedProduct.stock_quantity);
-      onQuantityChange(selectedProduct.stock_quantity);
+    const overLimit = cartItems.find((item) => item.quantity > item.product.stock_quantity);
+    if (overLimit) {
+      setError(`Only ${overLimit.product.stock_quantity} unit(s) of ${overLimit.product.name} are available.`);
+      onUpdateQuantity(overLimit.product.id, overLimit.product.stock_quantity);
       return;
     }
 
@@ -101,25 +90,31 @@ export function CheckoutSection({
     setSubmitting(true);
 
     try {
-      const { error: insertError } = await placeOrder({
-        customer_name: formData.name.trim(),
-        phone: formData.phone.trim(),
-        city: formData.city.trim(),
-        address: formData.address.trim(),
-        product_id: selectedProduct.id,
-        quantity,
-      });
+      for (const item of cartItems) {
+        const { error: insertError } = await placeOrder({
+          customer_name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          city: formData.city.trim(),
+          address: formData.address.trim(),
+          product_id: item.product.id,
+          quantity: item.quantity,
+        });
 
-      if (insertError) {
-        setError(insertError.message || "Unable to place order. Please try again.");
-      } else {
-        setSuccess("Order placed! You will receive a confirmation call soon.");
-        setFormData({ name: "", phone: "", city: "", address: "" });
-        handleQuantityChange(1);
-        onOrderPlaced?.();
+        if (insertError) {
+          throw new Error(insertError.message || `Unable to place order for ${item.product.name}.`);
+        }
       }
+
+      setSuccess("Order placed! You will receive a confirmation call soon.");
+      setFormData({ name: "", phone: "", city: "", address: "" });
+      onClearCart();
+      onOrderPlaced?.();
     } catch (err) {
-      setError("Unexpected error while placing the order. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unexpected error while placing the order. Please try again."
+      );
     }
 
     setSubmitting(false);
@@ -132,39 +127,93 @@ export function CheckoutSection({
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#F5E6C8] border border-[#C6A75E]/30 mb-6">
               <ShoppingBag className="w-4 h-4 text-[#C6A75E]" />
-              <span className="text-sm text-[#0F3D3E]">Quick Order Form</span>
+              <span className="text-sm text-[#0F3D3E]">Cart & Checkout</span>
             </div>
             <h2 className="text-4xl lg:text-5xl text-[#0F3D3E] mb-4">
               Complete Your Order
             </h2>
             <p className="text-lg text-[#0F3D3E]/70">
-              Fill in your details and we'll deliver to your doorstep
+              Add products to your cart, review quantities, and share your delivery details
             </p>
           </div>
 
           <div className="bg-[#FAF8F3] rounded-3xl p-8 lg:p-12 shadow-xl border border-[#C6A75E]/10">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-[#0F3D3E]">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[#0F3D3E]">
                   <Package className="w-5 h-5 text-[#C6A75E]" />
-                  Select Product
-                </label>
-                <select
-                  value={selectedProductId || ''}
-                  onChange={(e) => onSelectProductId(e.target.value)}
-                  disabled={loadingProducts || !products.length}
-                  className="w-full px-6 py-4 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] outline-none transition-colors bg-white text-[#0F3D3E]"
-                  required
-                >
-                  {loadingProducts && <option value="">Loading products...</option>}
-                  {!loadingProducts && !products.length && <option value="">No products available</option>}
-                  {!loadingProducts &&
-                    products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} — PKR {product.price.toLocaleString()} ({product.stock_quantity} in stock)
-                      </option>
+                  <span>Your Cart</span>
+                </div>
+
+                {!cartItems.length && (
+                  <div className="p-4 rounded-xl border border-dashed border-[#C6A75E]/30 bg-white text-[#0F3D3E]/70">
+                    Your cart is empty. Add a product from the list above to get started.
+                  </div>
+                )}
+
+                {!!cartItems.length && (
+                  <div className="space-y-3">
+                    {cartItems.map((item) => (
+                      <div
+                        key={item.product.id}
+                        className="bg-white rounded-xl border border-[#C6A75E]/20 p-4 flex flex-col gap-3"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="text-lg text-[#0F3D3E]">{item.product.name}</div>
+                            <div className="text-sm text-[#0F3D3E]/60">
+                              PKR {item.product.price.toLocaleString()} • {item.product.stock_quantity} in stock
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveItem(item.product.id)}
+                            className="text-[#0F3D3E]/60 hover:text-red-600 transition-colors"
+                            aria-label={`Remove ${item.product.name}`}
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+                              className="p-2 rounded-lg border border-[#C6A75E]/30 text-[#C6A75E] hover:bg-[#F5E6C8]"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(item.product.id, Number(e.target.value))}
+                              min={1}
+                              max={item.product.stock_quantity}
+                              className="w-20 text-center px-3 py-2 rounded-lg border border-[#C6A75E]/30 focus:border-[#C6A75E] outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+                              className="p-2 rounded-lg border border-[#C6A75E]/30 text-[#C6A75E] hover:bg-[#F5E6C8]"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-sm text-[#0F3D3E]/60">Line Total</div>
+                            <div className="text-xl text-[#C6A75E]">
+                              PKR {(item.product.price * item.quantity).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                </select>
+                  </div>
+                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
@@ -201,7 +250,7 @@ export function CheckoutSection({
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-1 gap-6">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[#0F3D3E]">
                     <MapPin className="w-5 h-5 text-[#C6A75E]" />
@@ -214,23 +263,6 @@ export function CheckoutSection({
                     onChange={handleChange}
                     required
                     placeholder="Karachi, Lahore, Islamabad..."
-                    className="w-full px-6 py-4 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] outline-none transition-colors bg-white text-[#0F3D3E]"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-[#0F3D3E]">
-                    <Package className="w-5 h-5 text-[#C6A75E]" />
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={quantity}
-                    onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                    min="1"
-                    max={selectedProduct ? selectedProduct.stock_quantity : undefined}
-                    required
                     className="w-full px-6 py-4 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] outline-none transition-colors bg-white text-[#0F3D3E]"
                   />
                 </div>
@@ -267,7 +299,7 @@ export function CheckoutSection({
               <div className="bg-white rounded-xl p-6 space-y-3">
                 <div className="flex justify-between text-[#0F3D3E]/70">
                   <span>Subtotal:</span>
-                  <span>PKR {totalPrice.toLocaleString()}</span>
+                  <span>PKR {cartTotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-[#0F3D3E]/70">
                   <span>Delivery:</span>
@@ -276,16 +308,20 @@ export function CheckoutSection({
                 <div className="h-px bg-[#C6A75E]/20"></div>
                 <div className="flex justify-between text-xl text-[#0F3D3E]">
                   <span>Total:</span>
-                  <span className="text-[#C6A75E]">PKR {totalPrice.toLocaleString()}</span>
+                  <span className="text-[#C6A75E]">PKR {cartTotal.toLocaleString()}</span>
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={submitting || loadingProducts || !products.length}
+                disabled={submitting || loadingProducts || !products.length || !cartItems.length}
                 className="w-full py-5 bg-[#C6A75E] text-white text-lg rounded-xl hover:bg-[#B89650] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {submitting ? "Placing Order..." : "Place Order - Cash on Delivery"}
+                {submitting
+                  ? "Placing Order..."
+                  : cartItems.length
+                    ? `Place Order for ${cartItems.length} item(s)`
+                    : "Add items to cart"}
               </button>
 
               <div className="text-center text-sm text-[#0F3D3E]/60 pt-4">

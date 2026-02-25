@@ -1,6 +1,10 @@
 import { ShoppingBag } from "lucide-react";
 
-export function Header() {
+type HeaderProps = {
+  cartCount?: number;
+};
+
+export function Header({ cartCount = 0 }: HeaderProps) {
   const scrollToCheckout = () => {
     document.getElementById('checkout')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -37,10 +41,15 @@ export function Header() {
           {/* CTA Button */}
           <button 
             onClick={scrollToCheckout}
-            className="flex items-center gap-2 px-6 py-3 bg-[#C6A75E] text-white rounded-xl hover:bg-[#B89650] transition-all duration-300 shadow-md hover:shadow-lg"
+            className="flex items-center gap-3 px-6 py-3 bg-[#C6A75E] text-white rounded-xl hover:bg-[#B89650] transition-all duration-300 shadow-md hover:shadow-lg"
           >
             <ShoppingBag className="w-5 h-5" />
             <span className="hidden sm:inline">Order Now</span>
+            {cartCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-1 text-xs font-semibold bg-white text-[#0F3D3E] rounded-full">
+                {cartCount}
+              </span>
+            )}
           </button>
         </div>
       </div>

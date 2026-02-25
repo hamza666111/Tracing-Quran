@@ -8,14 +8,13 @@ import { OfferSection } from "./components/OfferSection";
 import { CheckoutSection } from "./components/CheckoutSection";
 import { Footer } from "./components/Footer";
 import { fetchActiveProducts } from "@/lib/api/products";
-import { ProductType } from "@/lib/types";
+import { CartItem, ProductType } from "@/lib/types";
 
 export default function App() {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   const loadProducts = useCallback(async () => {
     setProductsLoading(true);
@@ -27,9 +26,6 @@ export default function App() {
     } else {
       setProductsError(null);
       setProducts(data);
-      if (data.length) {
-        setSelectedProductId((previous) => previous || data[0].id);
-      }
     }
 
     setProductsLoading(false);
@@ -39,15 +35,73 @@ export default function App() {
     loadProducts();
   }, [loadProducts]);
 
-  const handleSelectProduct = (productId: string, quantity: number) => {
-    setSelectedProductId(productId);
-    setSelectedQuantity(quantity);
+  useEffect(() => {
+    if (!products.length) return;
+
+    setCartItems((previous) =>
+      previous
+        .map((item) => {
+          const updatedProduct = products.find((product) => product.id === item.product.id);
+          if (!updatedProduct || !updatedProduct.is_active || updatedProduct.stock_quantity < 1) {
+            return null;
+          }
+
+          const safeQuantity = Math.min(Math.max(1, item.quantity), updatedProduct.stock_quantity);
+          return { product: updatedProduct, quantity: safeQuantity } as CartItem;
+        })
+        .filter(Boolean) as CartItem[]
+    );
+  }, [products]);
+
+  const handleAddToCart = (productId: string, quantity: number) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product || !product.is_active || product.stock_quantity < 1) {
+      return;
+    }
+
+    const safeQuantity = Math.max(1, quantity);
+
+    setCartItems((previous) => {
+      const existing = previous.find((item) => item.product.id === productId);
+      const maxQuantity = product.stock_quantity;
+      const nextQuantity = Math.min(
+        safeQuantity + (existing ? existing.quantity : 0),
+        maxQuantity
+      );
+
+      if (existing) {
+        return previous.map((item) =>
+          item.product.id === productId ? { product, quantity: nextQuantity } : item
+        );
+      }
+
+      return [...previous, { product, quantity: Math.min(safeQuantity, maxQuantity) }];
+    });
+
     document.getElementById("checkout")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleUpdateCartQuantity = (productId: string, quantity: number) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product) return;
+
+    const safeQuantity = Math.min(Math.max(1, quantity), product.stock_quantity || 1);
+    setCartItems((previous) =>
+      previous.map((item) =>
+        item.product.id === productId ? { product, quantity: safeQuantity } : item
+      )
+    );
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    setCartItems((previous) => previous.filter((item) => item.product.id !== productId));
+  };
+
+  const handleClearCart = () => setCartItems([]);
+
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      <Header cartCount={cartItems.length} />
       <main>
         <HeroSection />
         <BenefitsSection />
@@ -55,17 +109,17 @@ export default function App() {
           products={products}
           loading={productsLoading}
           error={productsError}
-          onSelectProduct={handleSelectProduct}
+          onAddToCart={handleAddToCart}
         />
         <TestimonialsSection />
         <OfferSection />
         <CheckoutSection
           products={products}
           loadingProducts={productsLoading}
-          selectedProductId={selectedProductId}
-          onSelectProductId={setSelectedProductId}
-          selectedQuantity={selectedQuantity}
-          onQuantityChange={setSelectedQuantity}
+          cartItems={cartItems}
+          onUpdateQuantity={handleUpdateCartQuantity}
+          onRemoveItem={handleRemoveFromCart}
+          onClearCart={handleClearCart}
           onOrderPlaced={loadProducts}
         />
       </main>
