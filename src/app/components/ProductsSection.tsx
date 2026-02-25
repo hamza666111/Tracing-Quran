@@ -7,14 +7,16 @@ type ProductsSectionProps = {
   loading: boolean;
   error?: string | null;
   onAddToCart: (productId: string, quantity: number) => void;
+  onBuyNow: (productId: string, quantity: number) => void;
 };
 
 type ProductCardProps = {
   product: ProductType;
   onAddToCart: (quantity: number) => void;
+  onBuyNow: (quantity: number) => void;
 };
 
-function ProductCard({ product, onAddToCart }: ProductCardProps) {
+function ProductCard({ product, onAddToCart, onBuyNow }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const outOfStock = product.stock_quantity <= 0;
   const unavailable = outOfStock || !product.is_active;
@@ -68,24 +70,36 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={unavailable}
-          onClick={() => onAddToCart(quantity)}
-          className={`w-full py-4 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 ${
-            unavailable
-              ? "bg-[#C6A75E]/60 text-white cursor-not-allowed"
-              : "bg-[#C6A75E] text-white hover:bg-[#B89650]"
-          }`}
-        >
-          {unavailable ? "Unavailable" : "Add to Cart"}
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            disabled={unavailable}
+            onClick={() => onAddToCart(quantity)}
+            className={`w-full py-4 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 ${
+              unavailable
+                ? "bg-[#C6A75E]/60 text-white cursor-not-allowed"
+                : "bg-[#C6A75E] text-white hover:bg-[#B89650]"
+            }`}
+          >
+            {unavailable ? "Unavailable" : "Add to Cart"}
+          </button>
+          <button
+            type="button"
+            disabled={unavailable}
+            onClick={() => onBuyNow(quantity)}
+            className={`w-full py-4 rounded-xl border border-[#C6A75E] text-[#C6A75E] bg-white transition-all duration-300 transform hover:-translate-y-0.5 ${
+              unavailable ? "opacity-60 cursor-not-allowed" : "hover:bg-[#F5E6C8]"
+            }`}
+          >
+            {unavailable ? "Unavailable" : "Buy Now"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-export function ProductsSection({ products, loading, error, onAddToCart }: ProductsSectionProps) {
+export function ProductsSection({ products, loading, error, onAddToCart, onBuyNow }: ProductsSectionProps) {
   const [activeTab, setActiveTab] = useState<'full' | 'para' | 'surah'>('full');
 
   const grouped = useMemo(
@@ -168,6 +182,7 @@ export function ProductsSection({ products, loading, error, onAddToCart }: Produ
               key={product.id}
               product={product}
               onAddToCart={(quantity) => onAddToCart(product.id, quantity)}
+              onBuyNow={(quantity) => onBuyNow(product.id, quantity)}
             />
           ))}
         </div>
