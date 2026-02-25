@@ -9,20 +9,50 @@ export function AdminRoute({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    const check = async () => {
+    const load = async () => {
       const { data } = await supabaseClient.auth.getSession();
       const session = data.session;
-      const isAdmin = session?.user?.app_metadata?.role === "admin";
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        if (active) {
+          setAuthorized(false);
+          setChecking(false);
+        }
+        return;
+      }
+
+      const { data: profile } = await supabaseClient
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
+
       if (active) {
         setAuthorized(Boolean(isAdmin));
         setChecking(false);
       }
     };
 
-    check();
+    load();
 
-    const { data: authListener } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      const isAdmin = session?.user?.app_metadata?.role === "admin";
+    const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      const userId = session?.user?.id;
+      if (!userId) {
+        setAuthorized(false);
+        setChecking(false);
+        return;
+      }
+
+      const { data: profile } = await supabaseClient
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      const isAdmin = profile?.role === 'admin' || session?.user?.app_metadata?.role === 'admin';
       setAuthorized(Boolean(isAdmin));
       setChecking(false);
     });

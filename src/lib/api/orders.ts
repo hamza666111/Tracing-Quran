@@ -11,13 +11,8 @@ export type CreateOrderPayload = {
 };
 
 export async function placeOrder(payload: CreateOrderPayload) {
-  const { data, error } = await supabaseClient
-    .from('orders')
-    .insert(payload)
-    .select()
-    .single();
-
-  return { data: data as OrderType | null, error };
+  const { error } = await supabaseClient.from('orders').insert(payload);
+  return { data: null, error };
 }
 
 export async function fetchOrders(filters: OrderFilters = {}) {

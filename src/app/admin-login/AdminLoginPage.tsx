@@ -45,6 +45,9 @@ export function AdminLoginPage() {
       return;
     }
 
+    // Ensure fresh JWT with latest app_metadata/user role
+    await supabaseClient.auth.refreshSession();
+
     const isAdmin = data.session?.user?.app_metadata?.role === "admin";
     if (!isAdmin) {
       setError("This account is not authorized for admin access.");
