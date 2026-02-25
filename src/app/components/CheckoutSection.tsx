@@ -146,8 +146,23 @@ export function CheckoutSection({
                 </div>
 
                 {!cartItems.length && (
-                  <div className="p-4 rounded-xl border border-dashed border-[#C6A75E]/30 bg-white text-[#0F3D3E]/70">
-                    Your cart is empty. Add a product from the list above to get started.
+                  <div className="p-4 rounded-xl border border-dashed border-[#C6A75E]/30 bg-white text-[#0F3D3E] space-y-3">
+                    <p className="text-sm">Your cart is empty. Add products to proceed to checkout.</p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <a
+                        href="#products"
+                        className="inline-flex justify-center items-center gap-2 px-4 py-3 rounded-xl bg-[#C6A75E] text-white hover:bg-[#B89650] transition-colors"
+                      >
+                        Browse Products
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}
+                        className="inline-flex justify-center items-center gap-2 px-4 py-3 rounded-xl border border-[#C6A75E] text-[#C6A75E] hover:bg-[#F5E6C8] transition-colors"
+                      >
+                        Add Items
+                      </button>
+                    </div>
                   </div>
                 )}
 
