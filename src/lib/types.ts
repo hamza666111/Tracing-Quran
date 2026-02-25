@@ -16,20 +16,26 @@ export type CartItem = {
 
 export type OrderStatus = 'new' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
-export type OrderType = {
+export type OrderItemType = {
   id: string;
-  user_id?: string | null;
-  customer_name: string;
-  phone: string;
-  city: string;
-  address: string;
+  order_id: string;
   product_id: string;
   quantity: number;
   unit_price: number;
   total_price: number;
-  status: OrderStatus;
   created_at: string;
   product?: ProductType;
+};
+
+export type OrderGroupType = {
+  id: string;
+  customer_name: string;
+  phone: string;
+  city: string;
+  address: string;
+  status: OrderStatus;
+  created_at: string;
+  items: OrderItemType[];
 };
 
 export type OrderFilters = {

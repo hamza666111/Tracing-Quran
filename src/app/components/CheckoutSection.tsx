@@ -1,6 +1,6 @@
 import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
 import { ShoppingBag, User, Phone, MapPin, Home, Package, Minus, Plus, Trash2 } from "lucide-react";
-import { placeOrder } from "@/lib/api/orders";
+import { placeGroupedOrder } from "@/lib/api/orders";
 import { CartItem, ProductType } from "@/lib/types";
 
 type CheckoutSectionProps = {
@@ -90,19 +90,19 @@ export function CheckoutSection({
     setSubmitting(true);
 
     try {
-      for (const item of cartItems) {
-        const { error: insertError } = await placeOrder({
-          customer_name: formData.name.trim(),
-          phone: formData.phone.trim(),
-          city: formData.city.trim(),
-          address: formData.address.trim(),
+      const { error: placeError } = await placeGroupedOrder({
+        customer_name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        city: formData.city.trim(),
+        address: formData.address.trim(),
+        items: cartItems.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
-        });
+        })),
+      });
 
-        if (insertError) {
-          throw new Error(insertError.message || `Unable to place order for ${item.product.name}.`);
-        }
+      if (placeError) {
+        throw placeError;
       }
 
       setSuccess("Order placed! You will receive a confirmation call soon.");

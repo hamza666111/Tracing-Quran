@@ -18,7 +18,7 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { isAdminSession } from "@/lib/supabase/roles";
 import { fetchOrders, updateOrderStatus, deleteOrder } from "@/lib/api/orders";
 import { fetchAllProducts, upsertProduct, deleteProduct, toggleProductActive } from "@/lib/api/products";
-import { OrderFilters, OrderStatus, OrderType, ProductType } from "@/lib/types";
+import { OrderFilters, OrderStatus, OrderGroupType, ProductType } from "@/lib/types";
 
 const ORDER_STATUSES: OrderStatus[] = ["new", "confirmed", "shipped", "delivered", "cancelled"];
 
@@ -34,7 +34,7 @@ const emptyProductForm = {
 
 export function AdminDashboard() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<OrderType[]>([]);
+  const [orders, setOrders] = useState<OrderGroupType[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [products, setProducts] = useState<ProductType[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -97,7 +97,10 @@ export function AdminDashboard() {
   }, []);
 
   const stats = useMemo(() => {
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total_price, 0);
+    const totalRevenue = orders.reduce(
+      (sum, order) => sum + order.items.reduce((inner, item) => inner + item.total_price, 0),
+      0
+    );
     const newOrders = orders.filter((order) => order.status === "new").length;
     const delivered = orders.filter((order) => order.status === "delivered").length;
 
