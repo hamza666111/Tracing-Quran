@@ -97,10 +97,10 @@ export function AdminDashboard() {
   }, []);
 
   const stats = useMemo(() => {
-    const totalRevenue = orders.reduce(
-      (sum, order) => sum + order.items.reduce((inner, item) => inner + item.total_price, 0),
-      0
-    );
+    const totalRevenue = orders.reduce((sum, order) => {
+      const orderTotal = order.items.reduce((inner, item) => inner + (item.total_price || 0), 0);
+      return sum + orderTotal;
+    }, 0);
     const newOrders = orders.filter((order) => order.status === "new").length;
     const delivered = orders.filter((order) => order.status === "delivered").length;
 
@@ -332,7 +332,7 @@ export function AdminDashboard() {
                 <th className="py-3">Customer</th>
                 <th className="py-3">Phone</th>
                 <th className="py-3">City</th>
-                <th className="py-3">Product</th>
+                <th className="py-3">Items</th>
                 <th className="py-3">Qty</th>
                 <th className="py-3">Total</th>
                 <th className="py-3">Status</th>
@@ -357,14 +357,26 @@ export function AdminDashboard() {
                 </tr>
               )}
 
-              {!ordersLoading && orders.map((order) => (
-                <tr key={order.id} className="border-t border-[#C6A75E]/10">
-                  <td className="py-3 text-[#0F3D3E]">{order.customer_name}</td>
-                  <td className="py-3 text-[#0F3D3E]">{order.phone}</td>
-                  <td className="py-3 text-[#0F3D3E]">{order.city}</td>
-                  <td className="py-3 text-[#0F3D3E]">{order.product?.name || "-"}</td>
-                  <td className="py-3 text-[#0F3D3E]">{order.quantity}</td>
-                  <td className="py-3 text-[#0F3D3E]">PKR {order.total_price.toLocaleString()}</td>
+              {!ordersLoading && orders.map((order) => {
+                const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+                const totalPrice = order.items.reduce(
+                  (sum, item) => sum + (item.total_price ?? (item.quantity || 0) * (item.product?.price || 0)),
+                  0
+                );
+                const firstItem = order.items[0];
+                const remaining = Math.max(0, order.items.length - 1);
+                const productLabel = firstItem
+                  ? `${firstItem.product?.name || "Product"}${remaining ? ` +${remaining} more` : ""}`
+                  : "-";
+
+                return (
+                  <tr key={order.id} className="border-t border-[#C6A75E]/10">
+                    <td className="py-3 text-[#0F3D3E]">{order.customer_name}</td>
+                    <td className="py-3 text-[#0F3D3E]">{order.phone}</td>
+                    <td className="py-3 text-[#0F3D3E]">{order.city}</td>
+                    <td className="py-3 text-[#0F3D3E]">{productLabel}</td>
+                    <td className="py-3 text-[#0F3D3E]">{totalQuantity}</td>
+                    <td className="py-3 text-[#0F3D3E]">PKR {totalPrice.toLocaleString()}</td>
                   <td className="py-3">
                     <select
                       value={order.status}
@@ -424,8 +436,9 @@ export function AdminDashboard() {
                       </button>
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
