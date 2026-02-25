@@ -15,6 +15,8 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  Mail,
+  Lock,
 } from "lucide-react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { isAdminSession } from "@/lib/supabase/roles";
@@ -48,6 +50,9 @@ export function AdminDashboard() {
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [accountForm, setAccountForm] = useState({ email: "", password: "", confirm: "" });
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountMessage, setAccountMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const ensureAdmin = async () => {
@@ -60,6 +65,16 @@ export function AdminDashboard() {
 
     ensureAdmin();
   }, [navigate]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data } = await supabaseClient.auth.getUser();
+      const email = data.user?.email || "";
+      setAccountForm((prev) => ({ ...prev, email }));
+    };
+
+    loadUser();
+  }, []);
 
   const loadOrders = async (appliedFilters = filters) => {
     setOrdersLoading(true);
@@ -241,6 +256,50 @@ export function AdminDashboard() {
       loadProducts();
     }
     setProductActionId(null);
+  };
+
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAccountMessage(null);
+    setError(null);
+    setAccountLoading(true);
+
+    const updates: { email?: string; password?: string } = {};
+
+    if (accountForm.email.trim()) {
+      updates.email = accountForm.email.trim();
+    }
+
+    if (accountForm.password) {
+      if (accountForm.password.length < 6) {
+        setError("Password must be at least 6 characters.");
+        setAccountLoading(false);
+        return;
+      }
+      if (accountForm.password !== accountForm.confirm) {
+        setError("Passwords do not match.");
+        setAccountLoading(false);
+        return;
+      }
+      updates.password = accountForm.password;
+    }
+
+    if (!updates.email && !updates.password) {
+      setError("Nothing to update. Change email or password.");
+      setAccountLoading(false);
+      return;
+    }
+
+    const { error: updateError } = await supabaseClient.auth.updateUser(updates);
+
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setAccountMessage("Account details updated.");
+      setAccountForm({ email: updates.email || accountForm.email, password: "", confirm: "" });
+    }
+
+    setAccountLoading(false);
   };
 
   return (
@@ -659,6 +718,83 @@ export function AdminDashboard() {
           </table>
         </div>
       </section>
+
+      <section className="bg-white rounded-3xl border border-[#C6A75E]/10 shadow-sm p-6 space-y-4">
+        <div className="flex items-center gap-2 text-xl text-[#0F3D3E]">
+          <ShieldIcon />
+          <span>Admin Account</span>
+        </div>
+
+        {accountMessage && (
+          <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+            {accountMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleAccountSubmit} className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-[#0F3D3E] text-sm">
+              <Mail className="w-4 h-4 text-[#C6A75E]" />
+              Email
+            </label>
+            <input
+              type="email"
+              value={accountForm.email}
+              onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
+              required
+              className="w-full px-4 py-3 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] bg-[#FAF8F3] text-[#0F3D3E]"
+              placeholder="admin@example.com"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-[#0F3D3E] text-sm">
+              <Lock className="w-4 h-4 text-[#C6A75E]" />
+              New Password
+            </label>
+            <input
+              type="password"
+              value={accountForm.password}
+              onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] bg-[#FAF8F3] text-[#0F3D3E]"
+              placeholder="Leave blank to keep current"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="flex items-center gap-2 text-[#0F3D3E] text-sm">
+              <Lock className="w-4 h-4 text-[#C6A75E]" />
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={accountForm.confirm}
+              onChange={(e) => setAccountForm({ ...accountForm, confirm: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-2 border-[#C6A75E]/20 focus:border-[#C6A75E] bg-[#FAF8F3] text-[#0F3D3E]"
+              placeholder="Re-enter new password"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <button
+              type="submit"
+              disabled={accountLoading}
+              className="px-5 py-3 rounded-xl bg-[#C6A75E] text-white hover:bg-[#B89650] transition-colors disabled:opacity-60"
+            >
+              {accountLoading ? "Updating..." : "Update Admin Login"}
+            </button>
+            <p className="text-xs text-[#0F3D3E]/60 mt-2">Updating email/password applies to the currently signed-in admin account.</p>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <div className="w-8 h-8 rounded-xl bg-[#C6A75E]/10 text-[#C6A75E] flex items-center justify-center">
+      <Lock className="w-4 h-4" />
     </div>
   );
 }
